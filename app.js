@@ -88,12 +88,8 @@ app.post('/webhook', (req, res, next) => {
                             console.log(err);
                         } else {
                             var jsonObj = JSON.parse(data); //now it an object
+                            console.log(data)
                             console.log(jsonObj.cookies.length)
-
-                            // if ("p" in jsObj) {
-                            //     console.log("`p` exists");
-                            // }
-
 
                             function updateCookieUser() {
                                 for (var i = 0; i < jsonObj.cookies.length; i++) {
@@ -182,7 +178,6 @@ app.post('/webhook', (req, res, next) => {
                                     'Cookie': '_ga=GA1.3.336982823.1560760977; _gid=GA1.3.1685062545.1561038520; ci_session='+c_cookie,
                                     'Accept-Language': 'en-US,en;q=0.9'
                                 }
-                                // console.log(headers)
 
                                 var options = {
                                     url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_tns',
@@ -202,19 +197,12 @@ app.post('/webhook', (req, res, next) => {
                                         }
                                         // console.log(response.headers)
                                         var $ = cheerio.load(body);
-                                        // console.log(body)
 
-                                        // var ipk, sks_total, skor;
-                                        // var json = { ipk : "", sks_total : "", skor : ""};
                                         let filteredEls = $('.table').filter(function() {
                                             return $(this)
                                         })
 
                                         let items = filteredEls.children().length;
-
-                                        // items.forEach(e => {
-                                        //     console.log(e.name);
-                                        // });
 
                                         console.log(items)
 
@@ -262,22 +250,8 @@ app.post('/webhook', (req, res, next) => {
 
                         client.replyMessage(tokenReply, msgToUser)
                     }
-
-                    // json = JSON.stringify(obj); //convert it back to json
-                    // fs.writeFile('cookies.json', json, 'utf8', callback); // write it back 
                 }
             })
-
-            // function checkCookieUserId(userid) {
-            //     if (event.source.userId != userid) {
-            //         var msgToUser = {
-            //             type: 'text',
-            //             text: 'Kamu belum punya cookie 😢\nLogin dulu yuk'
-            //         }
-
-            //         client.replyMessage(tokenReply, msgToUser)
-            //     }
-            // }
 
         } else if(msg_match_semester) {
             // switch() {
@@ -296,7 +270,7 @@ app.post('/webhook', (req, res, next) => {
                 } else {
 
                     
-                    console.log(event.source.userId)
+                    // console.log(event.source.userId)
 
 
                     function checkCookieUser(iduser) {
@@ -323,6 +297,37 @@ app.post('/webhook', (req, res, next) => {
                                     headers: headers
                                 };
 
+                                // function getIPS(thn_tempuh, semester) {
+
+                                //     var dataString = 'thn_tempuh='+thn_tempuh+'&jensm=R';
+
+                                //     var param = {
+                                //         url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
+                                //         method: 'POST',
+                                //         headers: headers,
+                                //         body: dataString
+
+                                //     }
+
+                                //     request(param, function(error, response, body) {
+                                //         if (!error && response.statusCode == 200) {
+                                //             var $ = cheerio.load(body)                                           
+                                //             var ips = $('table tbody:last-child').find('tr:nth-child(2) th:nth-child(2)').text()
+                                            
+                                //             console.log('Semester : '+semester)
+                                //             console.log('IPS '+ips)
+                                //             var msgToUser = {
+                                //                 type: 'text',
+                                //                 text: 'Daftar Hasil Studi\n'+semester+'\n-'+ips+''
+                                //             }
+
+                                //             client.replyMessage(tokenReply, msgToUser)
+                                //         } else {
+                                //             console.log(error)
+                                //         }
+                                //     })
+                                // }
+
                                 request(options, function(error, response, body) {
                                     if (!error && response.statusCode == 200) {
                                         if (response.headers.refresh) {
@@ -336,30 +341,55 @@ app.post('/webhook', (req, res, next) => {
                                         }
                                         // console.log(response.headers)
                                         var $ = cheerio.load(body);
-                                        // console.log(body)
-
-                                        // var ipk, sks_total, skor;
-                                        // var json = { ipk : "", sks_total : "", skor : ""};
                                         let filteredEls = $('.table tbody tr').filter(function() {
                                             return $(this)
                                         })
 
-                                        let items = filteredEls.next().html();
+                                        var jsonStudi = {'studi': []}
 
-                                        // items.forEach(e => {
-                                        //     console.log(e.name);
-                                        // });
+                                        // var jsonStudi = JSON.parse(hasil_studi)
 
-                                        console.log(items)
-                                        var judul = $('title')
-                                        console.log(judul.text())
-                                        // console.log(body)
-                                        var msgToUser = {
-                                            type: 'text',
-                                            text: judul.text()
-                                        }
+                                        filteredEls.next().find('select[name=thn_tempuh]').find('option').each((i,op) => {
+                                            
+                                            // getIPS($(op).val(), $(op).text())
+                                            var dataString = 'thn_tempuh='+$(op).val()+'&jensm=R';
 
-                                        client.replyMessage(tokenReply, msgToUser)
+                                            var param = {
+                                                url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
+                                                method: 'POST',
+                                                headers: headers,
+                                                body: dataString
+
+                                            }
+
+                                            request(param, function(error, response, body) {
+                                                if (!error && response.statusCode == 200) {
+                                                    var $ = cheerio.load(body)                                           
+                                                    var ips = $('table tbody:last-child').find('tr:nth-child(2) th:nth-child(2)').text()
+                                                    
+                                                    jsonStudi.studi.push({ 
+                                                        "tahun_tempuh" : $(op).val(),
+                                                        "semester" : $(op).text(),
+                                                        "ip_semester" : ips
+                                                    })
+                                                    console.log("Dari loop")
+                                                    console.log('Semester : '+$(op).text())
+                                                    console.log('IPS '+ips)
+
+                                                    // var msgToUser = {
+                                                    //     type: 'text',
+                                                    //     text: 'Daftar Hasil Studi\n'+$(op).text()+'\n-'+ips+''
+                                                    // }
+
+                                                    // client.replyMessage(tokenReply, msgToUser)
+                                                } else {
+                                                    console.log(error)
+                                                }
+                                            })
+
+                                        })
+                                        console.log(jsonStudi)
+
                                     } else {
                                         // console.log(body)
                                         var msgToUser = {
@@ -370,13 +400,16 @@ app.post('/webhook', (req, res, next) => {
                                         client.replyMessage(tokenReply, msgToUser)
                                     }
                                 })
+
+                                
+
                                 return true
                             }
                         }
                         return false
                     }
 
-                    console.log(checkCookieUser())
+                    // console.log(checkCookieUser())
 
                     if (checkCookieUser(user) == false) {
                         // console.log(c_cookie)
@@ -388,12 +421,11 @@ app.post('/webhook', (req, res, next) => {
                         client.replyMessage(tokenReply, msgToUser)
                     }
 
-                    // json = JSON.stringify(obj); //convert it back to json
-                    // fs.writeFile('cookies.json', json, 'utf8', callback); // write it back 
+                    
                 }
             })
 
-            console.log('hasil studi')
+            // console.log('hasil studi')
 
         } else if(msg_text == 'bantuan' || msg_text == 'help') {
             var msgToUser = {
