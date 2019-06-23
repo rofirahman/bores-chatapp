@@ -135,7 +135,7 @@ app.post('/webhook', (req, res, next) => {
                     // console.log(body)
                     var msgToUser = {
                         type: 'text',
-                        text: 'Kamu sudah login 😘'
+                        text: 'Kamu berhasil login 👍'
                     }
 
                     client.replyMessage(tokenReply, msgToUser)
@@ -198,18 +198,26 @@ app.post('/webhook', (req, res, next) => {
                                         // console.log(response.headers)
                                         var $ = cheerio.load(body);
 
-                                        let filteredEls = $('.table').filter(function() {
+                                        let find_ipk = $('.table').filter(function() {
                                             return $(this)
-                                        })
+                                        }).find('tbody').find('tr:contains("IP Semester:")').first().text()
 
-                                        let items = filteredEls.children().length;
+                                        
 
-                                        console.log(items)
+                                        console.log(ipk)
+                                        // var skor = find_ipk.substring(
+                                        //     find_ipk.lastIndexOf(": ") + 1, 
+                                        //     find_ipk.lastIndexOf("/")
+                                        // );
 
-                                       
-                                        var ipk = $('table tbody:last-child').find('tr:nth-child(2) th:nth-child(2)').text()
-                                        var sks_total = $('table tbody:last-child').find('tr:nth-child(1) th:nth-child(5)').text()
-                                        var skor = $('table tbody:last-child').find('tr:nth-child(1) th:nth-child(7)').text()
+
+                                        function sliceIPK(fe, le) {
+                                            return find_ipk.substring(find_ipk.lastIndexOf(fe) + 1, find_ipk.lastIndexOf(le))
+                                        }
+
+                                        var skor = sliceIPK(': ','/')
+                                        var sks_total = sliceIPK('/',' =')
+                                        var ipk = sliceIPK(': ','')
 
                                         console.log('IPK = '+ipk)
                                         console.log('SKS = '+sks_total)
@@ -219,7 +227,7 @@ app.post('/webhook', (req, res, next) => {
                                         // console.log(body)
                                         var msgToUser = {
                                             type: 'text',
-                                            text: judul.text()+'\n'+'Total Skor : '+skor+'\nTotal SKS : '+sks_total+'\nIPK '+ipk
+                                            text: judul.text()+'\n'+'Total Skor : '+skor+'\nTotal SKS : '+sks_total+'\nIPK :'+ipk
                                         }
 
                                         client.replyMessage(tokenReply, msgToUser)
@@ -297,37 +305,6 @@ app.post('/webhook', (req, res, next) => {
                                     headers: headers
                                 };
 
-                                // function getIPS(thn_tempuh, semester) {
-
-                                //     var dataString = 'thn_tempuh='+thn_tempuh+'&jensm=R';
-
-                                //     var param = {
-                                //         url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
-                                //         method: 'POST',
-                                //         headers: headers,
-                                //         body: dataString
-
-                                //     }
-
-                                //     request(param, function(error, response, body) {
-                                //         if (!error && response.statusCode == 200) {
-                                //             var $ = cheerio.load(body)                                           
-                                //             var ips = $('table tbody:last-child').find('tr:nth-child(2) th:nth-child(2)').text()
-                                            
-                                //             console.log('Semester : '+semester)
-                                //             console.log('IPS '+ips)
-                                //             var msgToUser = {
-                                //                 type: 'text',
-                                //                 text: 'Daftar Hasil Studi\n'+semester+'\n-'+ips+''
-                                //             }
-
-                                //             client.replyMessage(tokenReply, msgToUser)
-                                //         } else {
-                                //             console.log(error)
-                                //         }
-                                //     })
-                                // }
-
                                 request(options, function(error, response, body) {
                                     if (!error && response.statusCode == 200) {
                                         if (response.headers.refresh) {
@@ -345,7 +322,8 @@ app.post('/webhook', (req, res, next) => {
                                             return $(this)
                                         })
 
-                                        var jsonStudi = {'studi': []}
+                                        var jsonStudi = {studi: []}
+                                        var jsonHasil = JSON.stringify(jsonStudi)
 
                                         // var jsonStudi = JSON.parse(hasil_studi)
 
@@ -367,28 +345,39 @@ app.post('/webhook', (req, res, next) => {
                                                     var $ = cheerio.load(body)                                           
                                                     var ips = $('table tbody:last-child').find('tr:nth-child(2) th:nth-child(2)').text()
                                                     
-                                                    jsonStudi.studi.push({ 
+                                                    
+                                                    var obj = { 
                                                         "tahun_tempuh" : $(op).val(),
                                                         "semester" : $(op).text(),
                                                         "ip_semester" : ips
-                                                    })
+                                                    }
+                                                    jsonStudi.studi.push(obj)
+                                                    jsonHasil = JSON.stringify(jsonStudi)
+
                                                     console.log("Dari loop")
+                                                    console.log()
                                                     console.log('Semester : '+$(op).text())
                                                     console.log('IPS '+ips)
 
-                                                    // var msgToUser = {
-                                                    //     type: 'text',
-                                                    //     text: 'Daftar Hasil Studi\n'+$(op).text()+'\n-'+ips+''
-                                                    // }
+                                                    var msgToUser = {
+                                                        type: 'text',
+                                                        text: 'Daftar Hasil Studi\n'+$(op).text()+'\nIP Semester '+ips+''
+                                                    }
 
-                                                    // client.replyMessage(tokenReply, msgToUser)
+                                                    client.pushMessage(event.source.userId, msgToUser)
+                                                    .then((resp) => {
+                                                        console.log('success push message to '+event.source.userId)
+                                                    })
+                                                    .catch((err) => {
+                                                        console.log(err)
+                                                    })
                                                 } else {
                                                     console.log(error)
                                                 }
                                             })
 
                                         })
-                                        console.log(jsonStudi)
+
 
                                     } else {
                                         // console.log(body)
@@ -430,7 +419,7 @@ app.post('/webhook', (req, res, next) => {
         } else if(msg_text == 'bantuan' || msg_text == 'help') {
             var msgToUser = {
                 type: 'text',
-                text: 'Fitur yang dapat digunakan :\n1. Login (ketik: login [username] [password]\n2. Lihat Transkrip Sementara (ketik: transkrip)\n3. soon..'
+                text: 'Fitur yang dapat digunakan :\n1. Login (ketik: login [username] [password])\n2. Lihat Transkrip Sementara (ketik: transkrip)\n3. Lihat Daftar Hasil Studi (ketik: hasil studi)\n4. soon..\n\nNB: Fitur transkrip masih dalam pengembangan.'
             }
 
             client.replyMessage(tokenReply, msgToUser)
@@ -450,7 +439,7 @@ function replyMessages(replyToken, userId) {
 
     var message = {
         type: 'text',
-        text: 'Halo 😁 \nBores adalah Line Chat Bot untuk mahasiswa UNRIYO.\nKetik: `help` atau `bantuan` untuk melihat perintah yang dapat digunakan.\nBores masih dalam tahap pengembangan.'
+        text: 'Halo 😁 \nRiyo adalah Chat Bot Unofficial Kampus UNRIYO.\nKetik: `help` atau `bantuan` untuk melihat perintah yang dapat digunakan.\nRiyo masih dalam tahap pengembangan.'
     };
 
 
