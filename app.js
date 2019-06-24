@@ -23,6 +23,10 @@ const client = new Client(conf);
 
 app.use(middleware(conf))
 
+app.get('/', (req, res, next) => {
+    console.log('halo')
+})
+
 app.post('/webhook', (req, res, next) => {
 
     res.json(req.body.events)
@@ -335,25 +339,21 @@ app.post('/webhook', (req, res, next) => {
                                                                 var skor = $(result).parent().find('td:nth-child(10)').text()
 
                                                                 allMK.push({
-                                                                    "kode_mk": kode_mk,
-                                                                    "nama_mk": nama_mk,
-                                                                    "nilai": nilai,
-                                                                    "skor": skor
+                                                                    "type": 'text',
+                                                                    "text": kode_mk+' - '+nama_mk+' - '+nilai+' - '+skor+''
                                                                 })
-
-                                                                let msgToUser = {
-                                                                    type: 'text',
-                                                                    text: kode_mk+' - '+nama_mk+' - '+nilai+' - '+skor
-                                                                }
-
-                                                                client.pushMessage(event.source.userId, msgToUser)
-                                                                    .then((resp) => {
-                                                                    console.log('reply message to '+event.source.userId)
-                                                                    })
-                                                                    .catch((err) => {
-                                                                        console.log(err)
-                                                                    })
                                                             })
+
+
+                                                            function printArr(arr) {
+                                                                let str = "";
+                                                                for (let i = 0; i < arr.length; i++) {
+                                                                    if (Array.isArray(arr[i].text)) str += printArr(arr[i].text);
+                                                                    else str += "+ "+(i+1)+" +\n"+arr[i].text + "\n\n";
+                                                                }
+                                                                return str;
+                                                            }
+
 
                                                             // Search IPK using IP Semester
                                                             let find_ipk = $('.table').find('tbody').find('tr:contains("IP Semester:")').first().text()
@@ -367,14 +367,16 @@ app.post('/webhook', (req, res, next) => {
                                                             var ipk = sliceIPK('= ','')
                                                             console.log('IPK = '+ipk)
 
-                                                            var msgToUser = {
-                                                                type: 'text',
-                                                                text: 
-                                                                    'Daftar Hasil Studi Semester '+sem+'\n\n'+
-                                                                    'Total Nilai : '+skor+'\n'+
-                                                                    'Total SKS : '+sks_total+'\n'+
-                                                                    'IP Semester : '+ipk
-                                                            }
+                                                            let msgToUser = 
+                                                                {
+                                                                    type: 'text',
+                                                                    text: 
+                                                                        'Daftar Hasil Studi Semester '+sem+'\n\n'+
+                                                                        printArr(allMK)+'\n'+
+                                                                        'Total Skor : '+skor+'\n'+
+                                                                        'Total SKS : '+sks_total+'\n'+
+                                                                        'IP Semester : '+ipk
+                                                                }
 
                                                             client.replyMessage(tokenReply, msgToUser)
                                                                 .then((resp) => {
@@ -383,6 +385,7 @@ app.post('/webhook', (req, res, next) => {
                                                                 .catch((err) => {
                                                                     console.log(err)
                                                                 })
+
                                                         } else {
                                                             console.log(error)
                                                         }
