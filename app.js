@@ -8,6 +8,7 @@ const request = require('request')
 const fs = require('fs');
 const cheerio = require('cheerio');
 
+
 const app = express()
 
 const token = config.get('channelAccessToken')
@@ -349,7 +350,7 @@ app.post('/webhook', (req, res, next) => {
                                                                 let str = "";
                                                                 for (let i = 0; i < arr.length; i++) {
                                                                     if (Array.isArray(arr[i].text)) str += printArr(arr[i].text);
-                                                                    else str += "+ "+(i+1)+" +\n"+arr[i].text + "\n\n";
+                                                                    else str += "( "+(i+1)+" ) "+arr[i].text + "\n\n";
                                                                 }
                                                                 return str;
                                                             }
@@ -379,12 +380,6 @@ app.post('/webhook', (req, res, next) => {
                                                                 }
 
                                                             client.replyMessage(tokenReply, msgToUser)
-                                                                .then((resp) => {
-                                                                console.log('reply message to '+event.source.userId)
-                                                                })
-                                                                .catch((err) => {
-                                                                    console.log(err)
-                                                                })
 
                                                         } else {
                                                             console.log(error)
@@ -437,6 +432,13 @@ app.post('/webhook', (req, res, next) => {
             })
 
         } else if(msg_text == 'hasil studi') {
+            var msgToUser = {
+                type: 'text',
+                text: 'Maaf fitur ini sedang dalam perbaikan 😢'
+            }
+
+            client.replyMessage(tokenReply, msgToUser)
+        } else if(msg_text == 'studi') {
 
             fs.readFile('cookies.json', 'utf8', function readFileCallback(err, data){
                 if (err){
@@ -465,6 +467,8 @@ app.post('/webhook', (req, res, next) => {
                                     headers: headers
                                 };
 
+                                var Promises = require("bluebird");
+
                                 request(options, function(error, response, body) {
                                     if (!error && response.statusCode == 200) {
                                         if (response.headers.refresh) {
@@ -482,62 +486,292 @@ app.post('/webhook', (req, res, next) => {
                                             return $(this)
                                         })
 
-                                        var jsonStudi = {studi: []}
-                                        var jsonHasil = JSON.stringify(jsonStudi)
+                                        var List = []
+                                        
+
+                                        Promises
+                                        // Use this to iterate serially
+                                        .each(filteredEls.next().find('select[name=thn_tempuh]').find('option').get(), function(el){
+                                            // console.log($(el).val())
+                                            List.push({
+                                                'value': $(el).val(),
+                                                'text': $(el).text()
+                                            })
+                                        })
+                                        // When all of the above are done, following code will be executed
+                                        .then(function(){
+                                            // console.log(List[3].text)
 
 
+                                            for (var i = 0; i < List.length; i++) {
+                                                var studiAll = []
+                                                var dataString = 'thn_tempuh='+List[i].value+'&jensm=R'
 
-                                        filteredEls.next().find('select[name=thn_tempuh]').find('option').each((i,op) => {
-                                            
-                                            var dataString = 'thn_tempuh='+$(op).val()+'&jensm=R';
+                                                var param = {
+                                                    url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
+                                                    method: 'POST',
+                                                    headers: headers,
+                                                    body: dataString
+                                                }
 
-                                            var param = {
-                                                url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
-                                                method: 'POST',
-                                                headers: headers,
-                                                body: dataString
+                                                
+                                                request(param, function(error, response, body) {
+
+                                                    if (!error && response.statusCode == 200) {
+                                                        var $ = cheerio.load(body)
+
+                                                        
+                                                        var ipk = $('.table').filter(function() {
+                                                            return $(this)
+                                                        }).find('tbody').find('tr:contains("IP Semester:")').first().text()
+                                                        let filteredEls = $('.table tbody tr').filter(function() {
+                                                            return $(this)
+                                                        })
+                                                        var textsmt = filteredEls.next().find('select[name=thn_tempuh]').find('option[selected=selected]').text()
+                                                        studiAll.push({
+                                                            "type": 'text',
+                                                            "text": ipk
+                                                        })
+                                                        console.log(ipk)
+                                                        var msgToUser = {
+                                                            type: 'text',
+                                                            text: studiAll
+                                                        }
+
+                                                        client.replyMessage(tokenReply, msgToUser)
+
+                                                        
+                                                        // console.log(studiAll)
+                                                        
+
+                                                        // console.log(ipk)
+                                                    } else {
+                                                        console.log(error)
+                                                    }
+
+                                                })
 
                                             }
 
-                                            request(param, function(error, response, body) {
-                                                if (!error && response.statusCode == 200) {
-                                                    var $ = cheerio.load(body)        
+                                            // Promises
+                                            // .each(List, function(l) {
 
-                                                    let find_ipk = $('.table').filter(function() {
-                                                        return $(this)
-                                                    }).find('tbody').find('tr:contains("IP Semester:")').first().text()
+                                            //         // console.log(l.value)
+                                            //         var dataString = 'thn_tempuh='+l.value+'&jensm=R';
 
-                                                    function sliceIPK(fe, le) {
-                                                        return find_ipk.substring(find_ipk.lastIndexOf(fe) + 1, find_ipk.lastIndexOf(le))
-                                                    }
+                                            //         var param = {
+                                            //             url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
+                                            //             method: 'POST',
+                                            //             headers: headers,
+                                            //             body: dataString
+                                            //         }
 
-                                                    var skor = sliceIPK(': ','/')
-                                                    var sks_total = sliceIPK('/',' =')
-                                                    var ipk = sliceIPK(': ','')
+                                                    
+                                            //         request(param, function(error, response, body) {
 
-                                                    console.log("Dari loop")
-                                                    console.log('Semester : '+$(op).text())
-                                                    console.log('IPS : '+ipk)
-                                                    console.log()
+                                            //             if (!error && response.statusCode == 200) {
+                                            //                 var $ = cheerio.load(body)
 
-                                                    var msgToUser = {
-                                                        type: 'text',
-                                                        text: 'Daftar Hasil Studi\n'+$(op).text()+'\nIP Semester : '+ipk+''
-                                                    }
+                                                            
+                                            //                 var ipk = $('.table').filter(function() {
+                                            //                     return $(this)
+                                            //                 }).find('tbody').find('tr:contains("IP Semester:")').first().text()
+                                            //                 let filteredEls = $('.table tbody tr').filter(function() {
+                                            //                     return $(this)
+                                            //                 })
+                                            //                 var textsmt = filteredEls.next().find('select[name=thn_tempuh]').find('option[selected=selected]').text()
+                                            //                 studiAll.push({
+                                            //                     "type": 'text',
+                                            //                     "text": ipk
+                                            //                 })
+                                            //                 // console.log(ipk)
 
-                                                    client.pushMessage(event.source.userId, msgToUser)
-                                                        .then((resp) => {
-                                                            console.log('success push message to '+event.source.userId)
-                                                        })
-                                                        .catch((err) => {
-                                                            console.log(err)
-                                                        })
-                                                } else {
-                                                    console.log(error)
-                                                }
-                                            })
+                                                            
+                                            //                 // console.log(studiAll)
+                                                            
 
+                                            //                 // console.log(ipk)
+                                            //             } else {
+                                            //                 console.log(error)
+                                            //             }
+                                                    
+                                            //         })
+
+                                                
+                                            //     // console.log(List)
+                                            // })
+                                            // .then(function() {
+                                            //     console.log(studiAll)
+                                            // })
+                                            // .then(function() {
+
+                                            // })
+                                            // for (var i = 0; i < List.length; i++) {
+                                            // }
                                         })
+                                        
+
+                                        
+                                        // var p = Promise.resolve();
+                                        // var getSemester = []
+
+                                        // filteredEls.next().find('select[name=thn_tempuh]').find('option').each((i,op) => {
+                                        //     p = p.then(function(){ 
+                                        //         var dataString = 'thn_tempuh='+$(op).val()+'&jensm=R';
+
+                                        //         var param = {
+                                        //             url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
+                                        //             method: 'POST',
+                                        //             headers: headers,
+                                        //             body: dataString
+                                        //         }
+
+                                        //         request(param, function(error, response, body) {
+                                        //             if (!error && response.statusCode == 200) {
+                                        //                 var $ = cheerio.load(body)        
+
+                                        //                 var ipk = $('.table').filter(function() {
+                                        //                     return $(this)
+                                        //                 }).find('tbody').find('tr:contains("IP Semester:")').first().text()
+                                        //                 getSemester.push({
+                                        //                     "value": $(op).val(),
+                                        //                     "text": $(op).text(),
+                                        //                     "ipk": ipk
+                                        //                 })
+                                        //                 console.log(ipk)
+                                        //                 return p
+                                        //             } else {
+                                        //                 console.log(error)
+                                        //             }
+                                        //         })
+                                        //     });
+
+
+
+
+                                        // })
+                                        // p.then(function(){
+                                        //    console.log(getSemester)
+                                        // });
+
+
+                                        // var allStudi = []
+
+                                        // function getAllStudi() {
+                                        //     for (var i = 0; i < getSemester.length; i++) {
+                                        //         allStudi.push({
+
+                                        //         })
+                                        //     }
+
+                                        //     return false
+                                            
+                                        // }
+
+                                        // if (getAllStudi() != false) {
+
+                                        // }
+
+
+                                        // function getHasilStudi(allSem) {
+                                        //     console.log(allSem.length)
+
+
+                                        //     var allStudi = []
+                                        //     for (var i = 0; i < allSem.length; i++) {
+                                            
+                                        //         console.log(allSem[i].value)
+
+                                                
+                                        //     }
+
+
+                                        //     // function printArr(arr) {
+                                        //     //     let str = "";
+                                        //     //     for (let i = 0; i < arr.length; i++) {
+                                        //     //         if (Array.isArray(arr[i].text)) str += printArr(arr[i].text);
+                                        //     //         else str += "( "+(i+1)+" ) "+arr[i].text + "\n\n";
+                                        //     //     }
+                                        //     //     return str;
+                                        //     // }
+
+
+                                        //     return true
+                                        // }
+
+                                        // if (getHasilStudi(getSemester) != true) {
+                                        //     var msgToUser = {
+                                        //         type: 'text',
+                                        //         text: 'Data semester tidak ada 😢'
+                                        //     }
+
+
+                                        // let msgStudi = 
+                                        //     {
+                                        //         type: 'text',
+                                        //         text: 
+                                        //             'Daftar Hasil Studi Semester \n\n'+
+                                        //             printArr(allStudi)
+                                        //     }
+
+                                        //     client.replyMessage(tokenReply, msgStudi)
+                                        // }
+
+
+
+
+
+                                        // filteredEls.next().find('select[name=thn_tempuh]').find('option').each((i,op) => {
+                                            
+                                        //     var dataString = 'thn_tempuh='+$(op).val()+'&jensm=R';
+
+                                        //     var param = {
+                                        //         url: 'http://simpati-mhs.respati.ac.id/index.php/mahasiswa/lihat_khs',
+                                        //         method: 'POST',
+                                        //         headers: headers,
+                                        //         body: dataString
+
+                                        //     }
+
+                                        //     request(param, function(error, response, body) {
+                                        //         if (!error && response.statusCode == 200) {
+                                        //             var $ = cheerio.load(body)        
+
+                                        //             let find_ipk = $('.table').filter(function() {
+                                        //                 return $(this)
+                                        //             }).find('tbody').find('tr:contains("IP Semester:")').first().text()
+
+                                        //             function sliceIPK(fe, le) {
+                                        //                 return find_ipk.substring(find_ipk.lastIndexOf(fe) + 1, find_ipk.lastIndexOf(le))
+                                        //             }
+
+                                        //             var skor = sliceIPK(': ','/')
+                                        //             var sks_total = sliceIPK('/',' =')
+                                        //             var ipk = sliceIPK(': ','')
+
+                                        //             console.log("Dari loop")
+                                        //             console.log('Semester : '+$(op).text())
+                                        //             console.log('IPS : '+ipk)
+                                        //             console.log()
+
+                                        //             var msgToUser = {
+                                        //                 type: 'text',
+                                        //                 text: 'Daftar Hasil Studi\n'+$(op).text()+'\nIP Semester : '+ipk+''
+                                        //             }
+
+                                        //             client.pushMessage(event.source.userId, msgToUser)
+                                        //                 .then((resp) => {
+                                        //                     console.log('success push message to '+event.source.userId)
+                                        //                 })
+                                        //                 .catch((err) => {
+                                        //                     console.log(err)
+                                        //                 })
+                                        //         } else {
+                                        //             console.log(error)
+                                        //         }
+                                        //     })
+
+                                        // })
 
 
                                     } else {
