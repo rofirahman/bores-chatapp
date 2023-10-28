@@ -11,7 +11,7 @@
   "dependencies": {
     "@line/bot-sdk": "^6.7.1",
     "bluebird": "^3.5.5",
-    "cheerio": "^1.0.0-rc.3",
+    "cheerio": "^1.0.0-rc.12",
     "config": "^3.3.8",
     "express": "^4.17.3",
     "fs": "0.0.1-security",
